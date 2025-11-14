@@ -2,32 +2,47 @@ name: CI - Build and Test
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
 jobs:
+  # ========================
+  # BACKEND - SPRING BOOT
+  # ========================
   build-backend:
+    name: Build Backend
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
-      - name: Build Backend
-        run: mvn -B package --file BE/pom.xml
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('BE/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
 
+      - name: Build Backend
+        working-directory: BE
+        run: mvn -B clean package
+
+  # ========================
+  # FRONTEND - REACT + VITE
+  # ========================
   build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -37,10 +52,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Frontend dependencies
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: FE/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('FE/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        working-directory: FE
         run: npm install
-        working-directory: ./FE
 
       - name: Build Frontend
+        working-directory: FE
         run: npm run build
-        working-directory: ./FE
